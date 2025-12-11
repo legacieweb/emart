@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { useSearchParams, Link } from 'react-router-dom'
-import { productsAPI } from '../services/api'
+import { useSearchParams, Link, useNavigate } from 'react-router-dom'
+import { productsAPI, authAPI } from '../services/api'
+import { useStore } from '../store/useStore'
 import './Products.css'
 
 export default function Products() {
@@ -10,6 +11,11 @@ export default function Products() {
   const [search, setSearch] = useState(searchParams.get('search') || '')
   const [category, setCategory] = useState(searchParams.get('category') || '')
   const [page, setPage] = useState(1)
+  const navigate = useNavigate()
+  const { login } = useStore()
+  const [showAdminLoginModal, setShowAdminLoginModal] = useState(false)
+  const [adminLoginLoading, setAdminLoginLoading] = useState(false)
+  const [adminLoginFormData, setAdminLoginFormData] = useState({ email: '', password: '' })
 
   const categories = ['Electronics', 'Fashion', 'Home', 'Beauty', 'Sports', 'Books', 'Toys']
 
@@ -29,6 +35,30 @@ export default function Products() {
   const handleCategoryChange = (cat) => {
     setCategory(cat === category ? '' : cat)
     setPage(1)
+  }
+
+  const handleAdminLoginChange = (e) => {
+    const { name, value } = e.target
+    setAdminLoginFormData(prev => ({ ...prev, [name]: value }))
+  }
+
+  const handleAdminLogin = async (e) => {
+    e.preventDefault()
+    setAdminLoginLoading(true)
+
+    try {
+      const response = await authAPI.adminLogin(adminLoginFormData)
+      login(response.data.user, response.data.token)
+      setShowAdminLoginModal(false)
+      setAdminLoginFormData({ email: '', password: '' })
+      navigate('/admin')
+      alert('✅ Admin login successful!')
+    } catch (error) {
+      alert('❌ Login failed: ' + (error.response?.data?.message || 'Invalid admin credentials'))
+      setAdminLoginFormData({ email: '', password: '' })
+    } finally {
+      setAdminLoginLoading(false)
+    }
   }
 
   return (
@@ -79,6 +109,13 @@ export default function Products() {
         <section className="products-section">
           <div className="products-header">
             <h2 className="section-title">{category ? `${category} Products` : 'All Products'}</h2>
+            <button 
+              onClick={() => setShowAdminLoginModal(true)}
+              className="admin-login-btn"
+              title="Admin Login"
+            >
+              🔐 Admin Login
+            </button>
           </div>
 
           {loading ? (
@@ -144,6 +181,63 @@ export default function Products() {
           )}
         </section>
       </div>
+
+      {showAdminLoginModal && (
+        <div className="admin-login-modal-overlay" onClick={() => setShowAdminLoginModal(false)}>
+          <div className="admin-login-modal-content" onClick={e => e.stopPropagation()}>
+            <div className="admin-login-modal-header">
+              <h2>🔐 Admin Portal</h2>
+              <p>Enter your admin credentials to access the dashboard</p>
+              <button 
+                className="admin-login-modal-close"
+                onClick={() => setShowAdminLoginModal(false)}
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleAdminLogin} className="admin-login-modal-form">
+              <div className="form-group">
+                <label>Email Address</label>
+                <input
+                  type="email"
+                  name="email"
+                  value={adminLoginFormData.email}
+                  onChange={handleAdminLoginChange}
+                  required
+                  className="input-field"
+                  placeholder="admin@emart.com"
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Password</label>
+                <input
+                  type="password"
+                  name="password"
+                  value={adminLoginFormData.password}
+                  onChange={handleAdminLoginChange}
+                  required
+                  className="input-field"
+                  placeholder="••••••••"
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="btn btn-primary admin-login-modal-btn"
+                disabled={adminLoginLoading}
+              >
+                {adminLoginLoading ? 'Logging in...' : 'Login to Admin'}
+              </button>
+            </form>
+
+            <div className="admin-login-modal-footer">
+              <p>Access restricted to administrators only</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
