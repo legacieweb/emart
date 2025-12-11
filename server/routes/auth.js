@@ -54,6 +54,37 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ message: 'Email and password required' });
     }
 
+    const adminEmail = process.env.ADMIN_EMAIL;
+    const adminPassword = process.env.ADMIN_PASSWORD;
+
+    if (email === adminEmail && password === adminPassword) {
+      const user = await User.findOne({ email: adminEmail });
+      if (!user) {
+        return res.status(401).json({ message: 'Admin account not found' });
+      }
+
+      if (user.role !== 'admin') {
+        return res.status(403).json({ message: 'This account does not have admin privileges' });
+      }
+
+      const token = jwt.sign(
+        { id: user._id, role: user.role },
+        process.env.JWT_SECRET,
+        { expiresIn: '7d' }
+      );
+
+      return res.json({
+        message: 'Admin login successful',
+        token,
+        user: {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+          role: user.role
+        }
+      });
+    }
+
     const user = await User.findOne({ email });
     if (!user) {
       return res.status(401).json({ message: 'Invalid credentials' });
@@ -72,50 +103,6 @@ router.post('/login', async (req, res) => {
 
     res.json({
       message: 'Login successful',
-      token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role
-      }
-    });
-  } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
-  }
-});
-
-router.post('/admin-login', async (req, res) => {
-  try {
-    const { email, password } = req.body;
-    const adminEmail = process.env.ADMIN_EMAIL;
-    const adminPassword = process.env.ADMIN_PASSWORD;
-
-    if (!adminEmail || !adminPassword) {
-      return res.status(500).json({ message: 'Admin credentials not configured' });
-    }
-
-    if (email !== adminEmail || password !== adminPassword) {
-      return res.status(401).json({ message: 'Invalid admin credentials' });
-    }
-
-    const user = await User.findOne({ email: adminEmail });
-    if (!user) {
-      return res.status(401).json({ message: 'Admin account not found' });
-    }
-
-    if (user.role !== 'admin') {
-      return res.status(403).json({ message: 'This account does not have admin privileges' });
-    }
-
-    const token = jwt.sign(
-      { id: user._id, role: user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: '7d' }
-    );
-
-    res.json({
-      message: 'Admin login successful',
       token,
       user: {
         id: user._id,

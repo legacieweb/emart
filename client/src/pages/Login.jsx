@@ -25,8 +25,14 @@ export default function Login() {
     try {
       const response = await authAPI.login(formData)
       login(response.data.user, response.data.token)
-      navigate('/')
-      alert('Welcome back! 🎉')
+      
+      if (response.data.user.role === 'admin') {
+        navigate('/admin')
+        alert('✅ Admin login successful! 🎉')
+      } else {
+        navigate('/')
+        alert('Welcome back! 🎉')
+      }
     } catch (error) {
       alert('Login failed: ' + (error.response?.data?.message || 'Invalid credentials'))
     } finally {

@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { adminAPI, authAPI } from '../services/api'
+import { adminAPI } from '../services/api'
 import { useStore } from '../store/useStore'
 import './AdminDashboard.css'
 
 export default function AdminDashboard() {
   const navigate = useNavigate()
-  const { user, login } = useStore()
+  const { user } = useStore()
   const [stats, setStats] = useState(null)
   const [orders, setOrders] = useState([])
   const [products, setProducts] = useState([])
@@ -15,42 +15,14 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true)
   const [selectedOrder, setSelectedOrder] = useState(null)
   const [updatingOrder, setUpdatingOrder] = useState(false)
-  const [showLoginModal, setShowLoginModal] = useState(true)
-  const [loginLoading, setLoginLoading] = useState(false)
-  const [loginFormData, setLoginFormData] = useState({ email: '', password: '' })
 
   useEffect(() => {
     if (user?.role === 'admin') {
-      setShowLoginModal(false)
       loadDashboard()
     } else {
-      setShowLoginModal(true)
-      setLoading(false)
+      navigate('/login')
     }
-  }, [user])
-
-  const handleLoginChange = (e) => {
-    const { name, value } = e.target
-    setLoginFormData(prev => ({ ...prev, [name]: value }))
-  }
-
-  const handleAdminLogin = async (e) => {
-    e.preventDefault()
-    setLoginLoading(true)
-
-    try {
-      const response = await authAPI.adminLogin(loginFormData)
-      login(response.data.user, response.data.token)
-      setShowLoginModal(false)
-      setLoginFormData({ email: '', password: '' })
-      loadDashboard()
-    } catch (error) {
-      alert('❌ Login failed: ' + (error.response?.data?.message || 'Invalid admin credentials'))
-      setLoginFormData({ email: '', password: '' })
-    } finally {
-      setLoginLoading(false)
-    }
-  }
+  }, [user, navigate])
 
   const loadDashboard = async () => {
     try {
@@ -92,60 +64,7 @@ export default function AdminDashboard() {
     }
   }
 
-  if (loading && !showLoginModal) return <div className="loading-page">Loading dashboard...</div>
-
-  if (showLoginModal) {
-    return (
-      <div className="login-modal-overlay">
-        <div className="login-modal-content">
-          <div className="modal-header">
-            <h2>🔐 Admin Portal</h2>
-            <p>Enter your admin credentials to access the dashboard</p>
-          </div>
-
-          <form onSubmit={handleAdminLogin} className="login-modal-form">
-            <div className="form-group">
-              <label>Email Address</label>
-              <input
-                type="email"
-                name="email"
-                value={loginFormData.email}
-                onChange={handleLoginChange}
-                required
-                className="input-field"
-                placeholder="admin@emart.com"
-              />
-            </div>
-
-            <div className="form-group">
-              <label>Password</label>
-              <input
-                type="password"
-                name="password"
-                value={loginFormData.password}
-                onChange={handleLoginChange}
-                required
-                className="input-field"
-                placeholder="••••••••"
-              />
-            </div>
-
-            <button
-              type="submit"
-              className="btn btn-primary login-modal-btn"
-              disabled={loginLoading}
-            >
-              {loginLoading ? 'Logging in...' : 'Login to Admin'}
-            </button>
-          </form>
-
-          <div className="modal-footer">
-            <p>Access restricted to administrators only</p>
-          </div>
-        </div>
-      </div>
-    )
-  }
+  if (loading) return <div className="loading-page">Loading dashboard...</div>
 
   return (
     <div className="admin-dashboard">
